@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kompas ulaganja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F2F4F3; --surface:#FFFFFF; --ink:#15201C; --muted:#5B6863; --line:#D9DFDC;
+  --gold:#9A6F12; --gold-soft:#F3E8CF; --teal:#1F6F66;
+  --good:#1E7A45; --warn:#A8620A; --bad:#B3261E;
+  --good-bg:#E3F2E8; --warn-bg:#FBEFD9; --bad-bg:#F9E2E0;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F1513; --surface:#17201D; --ink:#E6ECE9; --muted:#95A39D; --line:#2A3531;
+    --gold:#E0B557; --gold-soft:#3A2F17; --teal:#5FC0B3;
+    --good:#6BD08F; --warn:#F0B35A; --bad:#F2877F;
+    --good-bg:#16311F; --warn-bg:#3A2A12; --bad-bg:#3D1A18;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1513; --surface:#17201D; --ink:#E6ECE9; --muted:#95A39D; --line:#2A3531;
+  --gold:#E0B557; --gold-soft:#3A2F17; --teal:#5FC0B3;
+  --good:#6BD08F; --warn:#F0B35A; --bad:#F2877F;
+  --good-bg:#16311F; --warn-bg:#3A2A12; --bad-bg:#3D1A18;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);}
+[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:grid;gap:40px}
+h1,h2,h3{font-family:var(--display);font-stretch:85%;margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(34px,6vw,54px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:700}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+.muted{color:var(--muted)}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.num,td.n,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{display:grid;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:22px}
+.hrow{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;justify-content:space-between}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--gold);padding-left:12px;max-width:80ch}
+section{display:grid;gap:16px}
+.shead{display:grid;gap:6px}
+
+/* ticker strip */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tick{background:var(--surface);padding:14px 16px;display:grid;gap:4px;align-content:start}
+.tick .lbl{font-size:12px;color:var(--muted)}
+.tick .px{font:500 20px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.tick .ch{font:12px var(--mono);display:flex;gap:10px;flex-wrap:wrap}
+.up{color:var(--good)} .down{color:var(--bad)}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font:500 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--bg);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.n{text-align:right;white-space:nowrap}
+.asset{font-weight:600}
+.sub{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.chip{display:inline-block;font:500 11px/1 var(--mono);padding:4px 7px;border-radius:3px;white-space:nowrap}
+.c-good{background:var(--good-bg);color:var(--good)}
+.c-warn{background:var(--warn-bg);color:var(--warn)}
+.c-bad{background:var(--bad-bg);color:var(--bad)}
+.wide td{min-width:150px}
+.wide td:first-child{min-width:170px}
+
+/* bars */
+.bar{position:relative;height:10px;background:var(--bg);border-radius:2px;min-width:120px}
+.bar i{position:absolute;top:0;bottom:0;border-radius:2px}
+.bar .pos{left:0;background:var(--teal)}
+.bar .neg{right:0;background:var(--bad)}
+
+/* calc */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px;display:grid;gap:14px;align-content:start}
+label{font-size:13px;color:var(--muted);display:grid;gap:6px}
+input,select,button{font:inherit;color:var(--ink)}
+input[type=number],input[type=text],select{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100%;font-family:var(--mono)}
+input[type=range]{width:100%;accent-color:var(--gold)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+button{cursor:pointer;border-radius:4px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;font-size:13px}
+button:hover{border-color:var(--gold)}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+button.ghost{background:transparent}
+button[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
+.big{font:500 32px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.kv div{display:grid;gap:2px}
+.kv span{font-size:12px;color:var(--muted)}
+.kv b{font:500 17px var(--mono);font-variant-numeric:tabular-nums}
+svg text{fill:var(--muted);font:11px var(--mono)}
+
+/* portfolio */
+.alloc{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--bg)}
+.alloc i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.status{font-size:12px;color:var(--muted)}
+.badge{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);padding:3px 7px;border-radius:3px}
+td input,td select{padding:6px 8px;min-width:90px}
+.del{padding:4px 9px}
+ul.src{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+a{color:var(--teal)}
+footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:no-preference){.bar i,.alloc i{transition:width .4s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">Referentna tabla · stanje na <span id="asof"></span></span>
+  <div class="hrow">
+    <h1>Kompas ulaganja</h1>
+    <span class="mono muted" id="fxline"></span>
+  </div>
+  <p class="note">Referentni pregled, ne preporuka za kupovinu. Cene su snimak sa javnih izvora na navedeni datum. Poreska pravila su sažetak za rezidenta Srbije: proveri ih sa poreskim savetnikom pre odluke.</p>
+</header>
+
+<section aria-labelledby="h-now">
+  <div class="shead">
+    <span class="eyebrow">01 · Gde je tržište sada</span>
+    <h2 id="h-now">Cene i kretanje</h2>
+  </div>
+  <div class="strip" id="strip"></div>
+</section>
+
+<section aria-labelledby="h-cmp">
+  <div class="shead">
+    <span class="eyebrow">02 · Poređenje klasa imovine</span>
+    <h2 id="h-cmp">Šta dobijaš, šta rizikuješ, kako se ulazi iz Srbije</h2>
+  </div>
+  <div class="tbl"><table class="wide" id="cmp"></table></div>
+</section>
+
+<section aria-labelledby="h-hist">
+  <div class="shead">
+    <span class="eyebrow">03 · Dugoročna referenca</span>
+    <h2 id="h-hist">Istorijski prinos naspram najgoreg pada</h2>
+    <p class="muted">Godišnji prinos iznad inflacije (realni) i najveći pad od vrha do dna. Zaokružene vrednosti iz dugih serija. Prošli prinosi ne garantuju buduće.</p>
+  </div>
+  <div class="tbl"><table id="hist"></table></div>
+</section>
+
+<section aria-labelledby="h-calc">
+  <div class="shead">
+    <span class="eyebrow">04 · Kalkulator mesečnog ulaganja</span>
+    <h2 id="h-calc">Koliko postaje X € mesečno</h2>
+    <p class="muted">Primer iz Reddit posta: 50 € mesečno 20 godina uz 15% godišnje daje oko 75.000 €. Uporedi sa istorijski realnijih 6–8% nominalno.</p>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <div class="fields">
+        <label for="c-start">Početni ulog (€)<input id="c-start" type="number" min="0" step="100" value="0"></label>
+        <label for="c-month">Mesečno (€)<input id="c-month" type="number" min="0" step="10" value="50"></label>
+        <label for="c-years">Godina<input id="c-years" type="number" min="1" max="50" step="1" value="20"></label>
+      </div>
+      <label for="c-rate">Godišnji prinos: <b class="mono" id="c-rate-v"></b><input id="c-rate" type="range" min="0" max="20" step="0.5" value="7"></label>
+      <div class="presets" id="c-presets"></div>
+      <label for="c-infl">Inflacija za realnu vrednost (%)<input id="c-infl" type="number" min="0" max="15" step="0.5" value="3"></label>
+    </div>
+    <div class="panel">
+      <div><span class="muted" style="font-size:12px">Vrednost na kraju</span><div class="big" id="c-fv"></div></div>
+      <div class="kv">
+        <div><span>Ukupno uloženo</span><b id="c-in"></b></div>
+        <div><span>Zarada</span><b id="c-gain"></b></div>
+        <div><span>U današnjim €</span><b id="c-real"></b></div>
+        <div><span>Isto uz 15%</span><b id="c-15"></b></div>
+      </div>
+      <svg id="c-chart" viewBox="0 0 520 190" role="img" aria-label="Rast vrednosti po godinama"></svg>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-pf">
+  <div class="shead">
+    <span class="eyebrow">05 · Praćenje</span>
+    <div class="hrow"><h2 id="h-pf">Moj portfolio</h2><span id="pf-badge"></span></div>
+    <p class="muted">Unesi šta imaš. Vrednost se računa po referentnim cenama iz tabele 01. Za „Ostalo“ unesi trenutnu cenu ručno. Podaci ostaju samo u ovom browseru, ne šalju se nigde.</p>
+  </div>
+  <div class="panel">
+    <div class="kv">
+      <div><span>Trenutna vrednost</span><b id="pf-val"></b></div>
+      <div><span>Uloženo</span><b id="pf-cost"></b></div>
+      <div><span>Dobit / gubitak</span><b id="pf-pl"></b></div>
+    </div>
+    <div class="alloc" id="pf-alloc"></div>
+    <div class="legend" id="pf-legend"></div>
+    <div class="tbl"><table id="pf"></table></div>
+    <div class="row-actions">
+      <button id="pf-add" type="button">Dodaj poziciju</button>
+      <button id="pf-save" type="button" class="primary">Sačuvaj</button>
+      <span class="status" id="pf-status"></span>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-mix">
+  <div class="shead">
+    <span class="eyebrow">06 · Referentni modeli raspodele</span>
+    <h2 id="h-mix">Kako drugi dele novac</h2>
+    <p class="muted">Poznati obrasci, ne tvoj plan. Svaki menja prinos za manji pad ili obrnuto.</p>
+  </div>
+  <div class="tbl"><table class="wide" id="mix"></table></div>
+</section>
+
+<section aria-labelledby="h-src">
+  <div class="shead"><span class="eyebrow">Izvori</span><h2 id="h-src">Odakle su brojevi</h2></div>
+  <ul class="src" id="src"></ul>
+</section>
+
+<footer>Kompas ulaganja · lični referentni alat. Nije investicioni savet.</footer>
+</div>
+
+<script>
+const REF = {
+  asOf: "28.09.2026.",
+  eurusd: 1.14,
+  assets: [
+    {id:"vwce", name:"VWCE", sub:"Vanguard FTSE All-World, akumulirajući", unit:"kom", priceEur:169.74, show:"€169,74", ch1m:null, ch1y:null, extra:"TER 0,14%"},
+    {id:"sp500", name:"S&P 500", sub:"indeks, poeni", unit:null, priceEur:null, show:"7.742", ch1m:null, ch1y:null, extra:"zatvaranje 25.09."},
+    {id:"gold", name:"Zlato", sub:"spot, USD po unci", unit:"g", priceEur:4150/31.1035/1.14, show:"$4.150 / oz", ch1m:-6.4, ch1y:8.4, extra:"≈ €117 po gramu"},
+    {id:"btc", name:"Bitcoin", sub:"USD", unit:"BTC", priceEur:83460/1.14, show:"$83.460", ch1m:null, ch1y:null, extra:"≈ −34% od vrha (okt 2025)"},
+    {id:"eth", name:"Ethereum", sub:"USD", unit:"ETH", priceEur:2647/1.14, show:"$2.647", ch1m:null, ch1y:null, extra:"≈ −46% od vrha (avg 2025)"},
+    {id:"dxb", name:"Dubai stan", sub:"prosečno po m², avgust 2026", unit:"m²", priceEur:1636*10.764/3.6725/1.14, show:"AED 1.636 / sq ft", ch1m:null, ch1y:-1.7, extra:"bruto prinos od zakupa ≈ 6,6%"},
+    {id:"bgd", name:"Beograd stan", sub:"prosečno po m², H1 2026 (RGZ)", unit:"m²", priceEur:3219, show:"€3.219 / m²", ch1m:null, ch1y:13.9, extra:"Savski venac €4.210 · Rakovica €2.600"},
+  ],
+  sources: [
+    ["Zlato, 28.09.2026.","https://tradingeconomics.com/commodity/gold"],
+    ["Zlato, Forbes Advisor","https://www.forbes.com/advisor/investing/gold-price/"],
+    ["Bitcoin i Ethereum, 24.09.2026.","https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-thursday-september-24-2026-crypto-prices-lose-ground-as-rate-hike-expectations-grow-114459916.html"],
+    ["VWCE, justETF","https://www.justetf.com/en/etf-profile.html?isin=IE00BK5BQT80"],
+    ["VWCE, Yahoo Finance","https://finance.yahoo.com/quote/VWCE.DE/"],
+    ["S&P 500, FRED","https://fred.stlouisfed.org/series/sp500"],
+    ["Dubai cene i prinosi, Global Property Guide","https://www.globalpropertyguide.com/middle-east/united-arab-emirates/price-history"],
+    ["Dubai cena po sq ft, Engel & Völkers","https://www.engelvoelkers.com/ae/en/resources/average-price-per-square-foot-in-dubai"],
+    ["Beograd H1 2026 (RGZ), N1","https://n1info.rs/biznis/prosecna-cena-stana-u-beogradu-probila-3000-evra-u-kom-gradu-su-najjeftiniji-stanovi"],
+    ["Beograd po opštinama, City Expert","https://cityexpert.rs/blog/saveti-za-vlasnike/cena-kvadrata-u-beogradu-prosecne-cene-kvadrata-po-opstinama-2026"],
+    ["Dugoročni prinosi: UBS Global Investment Returns Yearbook (zaokruženo)","https://www.ubs.com/global/en/investment-bank/insights-and-data/global-investment-returns-yearbook.html"],
+  ],
+};
+
+const CLASSES = [
+  {name:"Globalni ETF", sub:"VWCE, ~3.700 firmi", ret:"5–7% realno", risk:["Srednji","c-warn"], liq:["Dani","c-good"], min:"od 1 €", access:"IBKR, Trading212; uplata SEPA", tax:"15% kapitalni dobitak; 0% posle 10 god. držanja"},
+  {name:"S&P 500 ETF", sub:"CSPX, VUAA", ret:"6–7% realno", risk:["Srednji","c-warn"], liq:["Dani","c-good"], min:"od 1 €", access:"IBKR, Trading212", tax:"isto kao ETF; samo SAD, veća koncentracija"},
+  {name:"Zlato", sub:"poluge, kovanice, ETC", ret:"~4% realno od 1971.", risk:["Srednji","c-warn"], liq:["Dani (ETC) · nedelje (fizičko)","c-warn"], min:"poluga 1 g ≈ €130", access:"banke i dileri; ETC (SGLN, 4GLD) preko brokera", tax:"investiciono zlato bez PDV-a; fizičko zlato u načelu van poreza na kapitalni dobitak (proveri)"},
+  {name:"Kripto", sub:"BTC, ETH", ret:"bez duge istorije", risk:["Visok","c-bad"], liq:["Odmah","c-good"], min:"od 10 €", access:"menjačnice licencirane u Srbiji ili EU (MiCA)", tax:"15% na dobit od digitalne imovine; bez 10-godišnjeg izuzeća (proveri)"},
+  {name:"Dubai nekretnina", sub:"stan za izdavanje", ret:"6–7% bruto zakup + promena cene", risk:["Visok","c-bad"], liq:["Meseci","c-bad"], min:"≈ €150–200k (off-plan na rate)", access:"DLD registracija, agent; +4% DLD taksa, ~2% agent", tax:"UAE: 0%; rezident Srbije prijavljuje zakup iz inostranstva (20%, kredit za strani porez)"},
+  {name:"Beograd nekretnina", sub:"stan za izdavanje", ret:"~4% bruto zakup + promena cene", risk:["Srednji","c-warn"], liq:["Meseci","c-bad"], min:"≈ €200k prosečan stan", access:"direktno, kredit", tax:"zakup 20% uz 25% normiranih troškova; kapitalni dobitak 15%, 0% posle 10 god."},
+  {name:"Obveznice", sub:"državne, EUR", ret:"1–2% realno", risk:["Nizak","c-good"], liq:["Dani","c-good"], min:"od 1 €", access:"ETF preko brokera; državne obveznice RS", tax:"kamata na obveznice RS oslobođena; ETF kao gore"},
+];
+
+const HIST = [
+  {name:"Globalne akcije", period:"1900–2024", real:5.0, dd:-57, ddNote:"2007–09"},
+  {name:"S&P 500", period:"1926–2024", real:6.7, dd:-83, ddNote:"1929–32"},
+  {name:"Zlato", period:"1971–2024", real:4.0, dd:-65, ddNote:"1980–2001, realno"},
+  {name:"Obveznice (globalne)", period:"1900–2024", real:1.7, dd:-45, ddNote:"realno, posle 1945."},
+  {name:"Dubai nekretnine", period:"2003–2025", real:null, realTxt:"nema pouzdane serije", dd:-50, ddNote:"2008–10"},
+  {name:"Bitcoin", period:"2013–2025", real:null, realTxt:"vrlo visok, nestabilan", dd:-84, ddNote:"2017–18, ponovljeno −77% 2021–22"},
+];
+
+const MIX = [
+  {name:"Samo globalni ETF", who:"autor Reddit posta", split:"100% VWCE", good:"najjednostavnije, najniži troškovi", bad:"pad od −50% moguć bez amortizera"},
+  {name:"80/20", who:"klasičan balansiran", split:"80% globalni ETF · 20% obveznice", good:"manji padovi, rebalans", bad:"niži dugoročni prinos"},
+  {name:"Stalni portfolio", who:"Harry Browne", split:"25% akcije · 25% obveznice · 25% zlato · 25% keš", good:"mali padovi u krizama", bad:"zaostaje u dobrim godinama"},
+  {name:"Jezgro i satelit", who:"čest pristup", split:"85–90% ETF · 5–10% zlato · do 5% kripto", good:"izloženost bez velikog rizika", bad:"satelit lako preraste plan"},
+  {name:"ETF + nekretnina", who:"kao autor posta (stan za izdavanje)", split:"stan + mesečno u ETF", good:"prihod od zakupa finansira ulaganje", bad:"koncentracija u jednoj nekretnini, niska likvidnost"},
+];
+
+const PF_ASSETS = [
+  ["vwce","VWCE (kom)"],["gold","Zlato (g)"],["btc","Bitcoin (BTC)"],["eth","Ethereum (ETH)"],
+  ["dxb","Dubai stan (m²)"],["bgd","Beograd stan (m²)"],["cash","Gotovina (€)"],["other","Ostalo (ručna cena)"]
+];
+const COLORS = ["var(--teal)","var(--gold)","#6E7FD6","#C0567A","#7A9A3A","#8B6B4E","var(--muted)","#3F8FB5"];
+const EXAMPLE = [
+  {asset:"vwce", label:"", qty:481, cost:132.8, price:null},
+  {asset:"gold", label:"", qty:20, cost:95, price:null},
+  {asset:"btc", label:"", qty:0.02, cost:60000, price:null},
+];
+
+const eur = (v,d=0) => v==null||isNaN(v) ? "—" : new Intl.NumberFormat("sr-RS",{style:"currency",currency:"EUR",maximumFractionDigits:d,minimumFractionDigits:d}).format(v);
+const pct = v => v==null ? "—" : (v>0?"+":"")+v.toLocaleString("sr-RS",{maximumFractionDigits:1})+"%";
+const cls = v => v==null ? "" : v>=0 ? "up" : "down";
+const byId = id => REF.assets.find(a=>a.id===id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+document.getElementById("asof").textContent = REF.asOf;
+document.getElementById("fxline").textContent = `EUR/USD ${REF.eurusd.toFixed(2)}`;
+
+document.getElementById("strip").innerHTML = REF.assets.map(a=>`
+  <div class="tick">
+    <span class="lbl">${esc(a.name)} · ${esc(a.sub)}</span>
+    <span class="px">${esc(a.show)}</span>
+    <span class="ch">
+      ${a.ch1m!=null?`<span class="${cls(a.ch1m)}">1M ${pct(a.ch1m)}</span>`:""}
+      ${a.ch1y!=null?`<span class="${cls(a.ch1y)}">1G ${pct(a.ch1y)}</span>`:""}
+    </span>
+    <span class="lbl">${esc(a.extra)}</span>
+  </div>`).join("");
+
+document.getElementById("cmp").innerHTML = `
+  <thead><tr><th>Klasa</th><th>Očekivani prinos</th><th>Rizik</th><th>Likvidnost</th><th>Minimalni ulog</th><th>Pristup iz Srbije</th><th>Porez (rezident RS)</th></tr></thead>
+  <tbody>${CLASSES.map(c=>`<tr>
+    <td class="asset">${esc(c.name)}<span class="sub">${esc(c.sub)}</span></td>
+    <td>${esc(c.ret)}</td>
+    <td><span class="chip ${c.risk[1]}">${esc(c.risk[0])}</span></td>
+    <td><span class="chip ${c.liq[1]}">${esc(c.liq[0])}</span></td>
+    <td>${esc(c.min)}</td><td>${esc(c.access)}</td><td>${esc(c.tax)}</td></tr>`).join("")}</tbody>`;
+
+const maxReal = 8, maxDd = 90;
+document.getElementById("hist").innerHTML = `
+  <thead><tr><th>Imovina</th><th>Period</th><th style="text-align:right">Realni prinos / god.</th><th></th><th style="text-align:right">Najveći pad</th><th></th></tr></thead>
+  <tbody>${HIST.map(h=>`<tr>
+    <td class="asset">${esc(h.name)}</td><td class="mono muted">${esc(h.period)}</td>
+    <td class="n">${h.real!=null? h.real.toLocaleString("sr-RS",{minimumFractionDigits:1})+"%" : `<span class="muted">${esc(h.realTxt)}</span>`}</td>
+    <td>${h.real!=null?`<div class="bar"><i class="pos" style="width:${h.real/maxReal*100}%"></i></div>`:""}</td>
+    <td class="n">${h.dd}%<span class="sub">${esc(h.ddNote)}</span></td>
+    <td><div class="bar"><i class="neg" style="width:${-h.dd/maxDd*100}%"></i></div></td></tr>`).join("")}</tbody>`;
+
+document.getElementById("mix").innerHTML = `
+  <thead><tr><th>Model</th><th>Raspodela</th><th>Prednost</th><th>Mana</th></tr></thead>
+  <tbody>${MIX.map(m=>`<tr><td class="asset">${esc(m.name)}<span class="sub">${esc(m.who)}</span></td><td>${esc(m.split)}</td><td>${esc(m.good)}</td><td>${esc(m.bad)}</td></tr>`).join("")}</tbody>`;
+
+document.getElementById("src").innerHTML = REF.sources.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("");
+
+/* calculator */
+const $ = id => document.getElementById(id);
+const PRESETS = [[3,"Obveznice ~3%"],[7,"Istorijski ~7%"],[10,"S&P nominalno ~10%"],[15,"Reddit 15%"]];
+$("c-presets").innerHTML = PRESETS.map(([v,t])=>`<button type="button" data-r="${v}">${t}</button>`).join("");
+$("c-presets").addEventListener("click",e=>{const b=e.target.closest("button"); if(!b) return; $("c-rate").value=b.dataset.r; calc();});
+function series(start, monthly, years, rate){
+  const r = rate/100/12, out=[start]; let v=start;
+  for(let m=1;m<=years*12;m++){ v = v*(1+r)+monthly; if(m%12===0) out.push(v); }
+  return out;
+}
+function calc(){
+  const start=+$("c-start").value||0, monthly=+$("c-month").value||0, years=Math.max(1,Math.min(50,+$("c-years").value||1)), rate=+$("c-rate").value, infl=+$("c-infl").value||0;
+  $("c-rate-v").textContent = rate.toLocaleString("sr-RS")+"%";
+  document.querySelectorAll("#c-presets button").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.r===rate));
+  const s = series(start,monthly,years,rate), s15 = series(start,monthly,years,15);
+  const fv = s[s.length-1], invested = start+monthly*12*years;
+  $("c-fv").textContent = eur(fv); $("c-in").textContent = eur(invested);
+  $("c-gain").textContent = eur(fv-invested); $("c-real").textContent = eur(fv/Math.pow(1+infl/100,years));
+  $("c-15").textContent = eur(s15[s15.length-1]);
+  const W=520,H=190,L=64,R=10,T=10,B=26, maxV=Math.max(...s,invested)*1.05||1;
+  const x=i=>L+(W-L-R)*i/years, y=v=>T+(H-T-B)*(1-v/maxV);
+  const line = s.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const inv = Array.from({length:years+1},(_,i)=>`${x(i).toFixed(1)},${y(start+monthly*12*i).toFixed(1)}`).join(" ");
+  const ticks=[0,.5,1].map(f=>maxV/1.05*f);
+  const step = years<=10?2:years<=25?5:10;
+  let g = ticks.map(t=>`<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${L-6}" y="${y(t)+4}" text-anchor="end">${eur(t).replace(/\s?€/,"")}</text>`).join("");
+  for(let i=0;i<=years;i+=step) g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${i}g</text>`;
+  $("c-chart").innerHTML = g +
+    `<polygon points="${L},${y(0)} ${line} ${x(years)},${y(0)}" fill="var(--gold-soft)" opacity=".8"/>`+
+    `<polyline points="${line}" fill="none" stroke="var(--gold)" stroke-width="2"/>`+
+    `<polyline points="${inv}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>`+
+    `<circle cx="${x(years)}" cy="${y(fv)}" r="4" fill="var(--gold)"/>`+
+    `<text x="${W-R}" y="${y(invested)-6}" text-anchor="end">uloženo</text>`;
+}
+["c-start","c-month","c-years","c-rate","c-infl"].forEach(id=>$(id).addEventListener("input",calc));
+calc();
+
+/* portfolio */
+let holdings = EXAMPLE.map(h=>({...h})), isExample = true;
+function priceOf(h){
+  if(h.asset==="cash") return 1;
+  if(h.asset==="other") return +h.price||0;
+  return byId(h.asset)?.priceEur ?? 0;
+}
+function renderPf(){
+  $("pf-badge").innerHTML = isExample ? `<span class="badge">Primer · nije tvoj portfolio</span>` : "";
+  const rows = holdings.map((h,i)=>{
+    const val = priceOf(h)*(+h.qty||0), cost=(+h.cost||0)*(+h.qty||0);
+    return {h,i,val,cost};
+  });
+  const total = rows.reduce((a,r)=>a+r.val,0), tcost=rows.reduce((a,r)=>a+r.cost,0), pl = total-tcost;
+  $("pf-val").textContent = eur(total); $("pf-cost").textContent = eur(tcost);
+  $("pf-pl").innerHTML = `<span class="${cls(pl)}">${eur(pl)} ${tcost? "("+pct(pl/tcost*100)+")":""}</span>`;
+  const parts = {};
+  rows.forEach(r=>{ const k=r.h.asset==="other"&&r.h.label? r.h.label : PF_ASSETS.find(a=>a[0]===r.h.asset)[1].replace(/\s*\(.*\)/,""); parts[k]=(parts[k]||0)+r.val; });
+  const keys = Object.keys(parts);
+  $("pf-alloc").innerHTML = total? keys.map((k,i)=>`<i style="width:${parts[k]/total*100}%;background:${COLORS[i%COLORS.length]}" title="${esc(k)}"></i>`).join("") : "";
+  $("pf-legend").innerHTML = total? keys.map((k,i)=>`<span><i style="background:${COLORS[i%COLORS.length]}"></i>${esc(k)} <b class="mono">${(parts[k]/total*100).toFixed(1)}%</b></span>`).join("") : "";
+  $("pf").innerHTML = `<thead><tr><th>Imovina</th><th>Naziv (opciono)</th><th style="text-align:right">Količina</th><th style="text-align:right">Nabavna cena / jed. (€)</th><th style="text-align:right">Trenutna cena (€)</th><th style="text-align:right">Vrednost</th><th style="text-align:right">D/G</th><th></th></tr></thead>
+  <tbody>${rows.map(({h,i,val,cost})=>`<tr data-i="${i}">
+    <td><select id="pf-a-${i}" data-f="asset" aria-label="Imovina">${PF_ASSETS.map(([v,t])=>`<option value="${v}"${v===h.asset?" selected":""}>${t}</option>`).join("")}</select></td>
+    <td><input id="pf-l-${i}" data-f="label" type="text" value="${esc(h.label||"")}" aria-label="Naziv"></td>
+    <td class="n"><input id="pf-q-${i}" data-f="qty" type="number" step="any" min="0" value="${h.qty}" aria-label="Količina"></td>
+    <td class="n"><input id="pf-c-${i}" data-f="cost" type="number" step="any" min="0" value="${h.cost}" aria-label="Nabavna cena"></td>
+    <td class="n">${h.asset==="other"? `<input id="pf-p-${i}" data-f="price" type="number" step="any" min="0" value="${h.price??""}" aria-label="Trenutna cena">` : eur(priceOf(h), priceOf(h)<10?2:0)}</td>
+    <td class="n">${eur(val)}</td>
+    <td class="n ${cls(val-cost)}">${cost? pct((val-cost)/cost*100) : "—"}</td>
+    <td><button type="button" class="ghost del" data-del="${i}" aria-label="Obriši red">×</button></td></tr>`).join("")}</tbody>`;
+}
+$("pf").addEventListener("change",e=>{
+  const el=e.target, tr=el.closest("tr[data-i]"); if(!tr||!el.dataset.f) return;
+  const h=holdings[+tr.dataset.i], f=el.dataset.f;
+  h[f] = (f==="asset"||f==="label") ? el.value : (el.value===""?null:+el.value);
+  markDirty(); renderPf();
+});
+$("pf").addEventListener("click",e=>{
+  const b=e.target.closest("[data-del]"); if(!b) return;
+  holdings.splice(+b.dataset.del,1); markDirty(); renderPf();
+});
+$("pf-add").addEventListener("click",()=>{ holdings.push({asset:"vwce",label:"",qty:0,cost:0,price:null}); markDirty(); renderPf(); });
+const STORE_KEY = "kompas-portfolio-v1";
+const num = v => v==null||v===""||isNaN(+v) ? null : +v;
+function markDirty(){
+  isExample=false;
+  $("pf-status").textContent = "Nesačuvane izmene";
+}
+$("pf-save").addEventListener("click", ()=>{
+  try{
+    const saved = new Date().toISOString();
+    localStorage.setItem(STORE_KEY, JSON.stringify({holdings, updatedAt:saved}));
+    renderPf();
+    $("pf-status").textContent="Sačuvano u ovom browseru "+new Date(saved).toLocaleString("sr-RS");
+  }catch{
+    $("pf-status").textContent="Browser ne dozvoljava čuvanje (privatni prozor?). Izmene važe dok je stranica otvorena.";
+  }
+});
+try{
+  const d = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+  if(d && Array.isArray(d.holdings)){
+    const ids = PF_ASSETS.map(a=>a[0]);
+    holdings = d.holdings.filter(h=>ids.includes(h?.asset)).map(h=>({asset:h.asset, label:String(h.label||""), qty:num(h.qty)??0, cost:num(h.cost)??0, price:num(h.price)}));
+    isExample=false;
+    $("pf-status").textContent = d.updatedAt? "Poslednje čuvanje "+new Date(d.updatedAt).toLocaleString("sr-RS") : "";
+  }
+}catch{}
+renderPf();
+</script>
+</body>
+</html>
