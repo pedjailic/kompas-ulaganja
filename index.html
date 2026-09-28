@@ -58,6 +58,17 @@ section{display:grid;gap:16px}
 .tick .px{font:500 20px/1.2 var(--mono);font-variant-numeric:tabular-nums}
 .tick .ch{font:12px var(--mono);display:flex;gap:10px;flex-wrap:wrap}
 .up{color:var(--good)} .down{color:var(--bad)}
+.live{display:inline-flex;align-items:center;gap:5px;font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--good)}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good)}
+.live.stale{color:var(--warn)} .live.stale::before{background:var(--warn)}
+@media (prefers-reduced-motion:no-preference){.live:not(.stale)::before{animation:pulse 2s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.3}}
+.alerts{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.alerts li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;padding:10px 12px;border-radius:4px;background:var(--bg);border-left:3px solid var(--line);font-size:14px}
+.alerts li.a-up{border-left-color:var(--good)} .alerts li.a-down{border-left-color:var(--bad)}
+.alerts li.fresh{background:var(--gold-soft)}
+.alerts time{font:12px var(--mono);color:var(--muted);white-space:nowrap}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 
 /* tables */
 .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
@@ -128,7 +139,7 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <h1>Kompas ulaganja</h1>
     <span class="mono muted" id="fxline"></span>
   </div>
-  <p class="note">Referentni pregled, ne preporuka za kupovinu. Cene su snimak sa javnih izvora na navedeni datum. Poreska pravila su sažetak za rezidenta Srbije: proveri ih sa poreskim savetnikom pre odluke.</p>
+  <p class="note">Referentni pregled, ne preporuka za kupovinu. Zlato, Bitcoin, Ethereum i kurs EUR/USD se osvežavaju uživo; ostale cene su snimak sa javnih izvora na navedeni datum. Poreska pravila su sažetak za rezidenta Srbije: proveri ih sa poreskim savetnikom pre odluke.</p>
 </header>
 
 <section aria-labelledby="h-now">
@@ -137,6 +148,28 @@ footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);paddin
     <h2 id="h-now">Cene i kretanje</h2>
   </div>
   <div class="strip" id="strip"></div>
+</section>
+
+<section aria-labelledby="h-al">
+  <div class="shead">
+    <span class="eyebrow">Alarmi · uživo dok je stranica otvorena</span>
+    <div class="hrow"><h2 id="h-al">Veliki potresi</h2><span class="status" id="live-status">Povezujem se…</span></div>
+    <p class="muted">Alarm se pali kad cena padne ili skoči više od praga za 24 sata ili za 1 sat. Isti alarm se ne ponavlja 6 sati. Provera svakih 60 sekundi.</p>
+  </div>
+  <div class="panel">
+    <div class="rules">
+      <label for="r-c24">Kripto, 24 h (%)<input id="r-c24" type="number" min="0.5" step="0.5"></label>
+      <label for="r-c1">Kripto, 1 h (%)<input id="r-c1" type="number" min="0.5" step="0.5"></label>
+      <label for="r-g24">Zlato, 24 h (%)<input id="r-g24" type="number" min="0.5" step="0.5"></label>
+      <label for="r-g1">Zlato, 1 h (%)<input id="r-g1" type="number" min="0.5" step="0.5"></label>
+    </div>
+    <div class="row-actions">
+      <button id="al-notify" type="button">Uključi obaveštenja na uređaju</button>
+      <button id="al-clear" type="button" class="ghost">Obriši istoriju alarma</button>
+      <span class="status" id="al-note"></span>
+    </div>
+    <ul class="alerts" id="al-list"></ul>
+  </div>
 </section>
 
 <section aria-labelledby="h-cmp">
@@ -240,6 +273,9 @@ const REF = {
     {id:"bgd", name:"Beograd stan", sub:"prosečno po m², H1 2026 (RGZ)", unit:"m²", priceEur:3219, show:"€3.219 / m²", ch1m:null, ch1y:13.9, extra:"Savski venac €4.210 · Rakovica €2.600"},
   ],
   sources: [
+    ["Uživo: kripto, CoinGecko","https://www.coingecko.com/"],
+    ["Uživo: zlato, gold-api.com","https://gold-api.com/"],
+    ["Uživo: EUR/USD, ECB preko Frankfurter","https://frankfurter.dev/"],
     ["Zlato, 28.09.2026.","https://tradingeconomics.com/commodity/gold"],
     ["Zlato, Forbes Advisor","https://www.forbes.com/advisor/investing/gold-price/"],
     ["Bitcoin i Ethereum, 24.09.2026.","https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-thursday-september-24-2026-crypto-prices-lose-ground-as-rate-hike-expectations-grow-114459916.html"],
@@ -301,16 +337,22 @@ const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 document.getElementById("asof").textContent = REF.asOf;
 document.getElementById("fxline").textContent = `EUR/USD ${REF.eurusd.toFixed(2)}`;
 
-document.getElementById("strip").innerHTML = REF.assets.map(a=>`
+function renderStrip(){
+  document.getElementById("strip").innerHTML = REF.assets.map(a=>`
   <div class="tick">
     <span class="lbl">${esc(a.name)} · ${esc(a.sub)}</span>
     <span class="px">${esc(a.show)}</span>
     <span class="ch">
-      ${a.ch1m!=null?`<span class="${cls(a.ch1m)}">1M ${pct(a.ch1m)}</span>`:""}
-      ${a.ch1y!=null?`<span class="${cls(a.ch1y)}">1G ${pct(a.ch1y)}</span>`:""}
+      ${a.live? `<span class="live${a.live.stale?" stale":""}">${a.live.stale?"KASNI":"UŽIVO"}</span>` : ""}
+      ${a.live?.ch1h!=null?`<span class="${cls(a.live.ch1h)}">1H ${pct(a.live.ch1h)}</span>`:""}
+      ${a.live?.ch24!=null?`<span class="${cls(a.live.ch24)}">24H ${pct(a.live.ch24)}</span>`:""}
+      ${!a.live && a.ch1m!=null?`<span class="${cls(a.ch1m)}">1M ${pct(a.ch1m)}</span>`:""}
+      ${!a.live && a.ch1y!=null?`<span class="${cls(a.ch1y)}">1G ${pct(a.ch1y)}</span>`:""}
     </span>
     <span class="lbl">${esc(a.extra)}</span>
   </div>`).join("");
+}
+renderStrip();
 
 document.getElementById("cmp").innerHTML = `
   <thead><tr><th>Klasa</th><th>Očekivani prinos</th><th>Rizik</th><th>Likvidnost</th><th>Minimalni ulog</th><th>Pristup iz Srbije</th><th>Porez (rezident RS)</th></tr></thead>
@@ -443,6 +485,123 @@ try{
   }
 }catch{}
 renderPf();
+
+/* live prices + alerts */
+const LS = {
+  get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+};
+const HIST_KEY="kompas-hist-v1", ALERTS_KEY="kompas-alerts-v1", FIRED_KEY="kompas-fired-v1", RULES_KEY="kompas-rules-v1";
+const RULES_DEFAULT = {c24:5, c1:3, g24:2, g1:1};
+const ATH_USD = {btc:126000, eth:4950};
+const H = 3600e3, POLL_MS = 60e3, COOLDOWN = 6*H, KEEP = 26*H;
+let rules = {...RULES_DEFAULT, ...LS.get(RULES_KEY,{})};
+let hist = LS.get(HIST_KEY,{gold:[],btc:[],eth:[]});
+let alerts = LS.get(ALERTS_KEY,[]);
+let fired = LS.get(FIRED_KEY,{});
+let fx = REF.eurusd, lastOk = 0;
+
+[["r-c24","c24"],["r-c1","c1"],["r-g24","g24"],["r-g1","g1"]].forEach(([id,k])=>{
+  $(id).value = rules[k];
+  $(id).addEventListener("change",()=>{ const v=+$(id).value; if(v>0){ rules[k]=v; LS.set(RULES_KEY,rules); } else $(id).value=rules[k]; });
+});
+
+function record(id, usd, t){
+  const s = hist[id] || (hist[id]=[]);
+  if(!s.length || t - s[s.length-1][0] >= 50e3) s.push([t,usd]);
+  while(s.length && t - s[0][0] > KEEP) s.shift();
+}
+function changeOver(id, ms, now, usd){
+  const s = hist[id]||[]; let best=null;
+  for(const [t,p] of s){ if(now-t >= ms*0.9){ best=p; } else break; }
+  return best ? (usd/best-1)*100 : null;
+}
+
+function renderAlerts(){
+  const now = Date.now();
+  $("al-list").innerHTML = alerts.length ? alerts.map(a=>`<li class="${a.pct>=0?"a-up":"a-down"}${now-a.t<10*60e3?" fresh":""}">
+    <b class="mono ${cls(a.pct)}">${pct(a.pct)}</b>
+    <span>${esc(a.text)}</span>
+    <time datetime="${new Date(a.t).toISOString()}">${new Date(a.t).toLocaleString("sr-RS",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</time></li>`).join("")
+    : `<li><span></span><span class="muted">Nema alarma. Tržište je mirno u odnosu na tvoje pragove.</span><span></span></li>`;
+}
+function notify(a){
+  alerts.unshift(a); alerts = alerts.slice(0,30); LS.set(ALERTS_KEY,alerts); renderAlerts();
+  if(document.hidden) document.title = "(!) " + a.title + " · Kompas ulaganja";
+  if("Notification" in window && Notification.permission==="granted"){
+    try{ new Notification(a.title,{body:a.text, tag:a.key}); }catch{}
+  }
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) document.title="Kompas ulaganja"; });
+
+function check(id, name, ch, win, limit, usd){
+  if(ch==null || Math.abs(ch) < limit) return;
+  const dir = ch>0?"up":"down", key = `${id}:${win}:${dir}`, now = Date.now();
+  if(fired[key] && now-fired[key] < COOLDOWN) return;
+  fired[key]=now; LS.set(FIRED_KEY,fired);
+  const verb = ch>0 ? "skočio" : "pao";
+  notify({t:now, key, pct:ch, title:`${name} ${pct(ch)} za ${win}`,
+    text:`${name} je ${verb} ${pct(Math.abs(ch)).replace("+","")} za ${win}, sada $${usd.toLocaleString("sr-RS",{maximumFractionDigits:0})} (prag ${limit}%).`});
+}
+
+function applyLive(id, usd, ch24, now){
+  const a = byId(id); record(id, usd, now);
+  const ch1h = changeOver(id, H, now, usd);
+  if(ch24==null) ch24 = changeOver(id, 24*H, now, usd);
+  a.priceEur = id==="gold" ? usd/31.1035/fx : usd/fx;
+  a.live = {ch1h, ch24, stale:false};
+  if(id==="gold"){
+    a.show = `$${usd.toLocaleString("sr-RS",{maximumFractionDigits:0})} / oz`;
+    a.extra = `≈ €${a.priceEur.toLocaleString("sr-RS",{maximumFractionDigits:1})} po gramu`;
+    check(id,"Zlato",ch24,"24 h",rules.g24,usd); check(id,"Zlato",ch1h,"1 h",rules.g1,usd);
+  }else{
+    const ath = ATH_USD[id], nm = id==="btc"?"Bitcoin":"Ethereum";
+    a.show = `$${usd.toLocaleString("sr-RS",{maximumFractionDigits:usd<1000?2:0})}`;
+    a.extra = `≈ €${a.priceEur.toLocaleString("sr-RS",{maximumFractionDigits:0})} · ${pct((usd/ath-1)*100)} od vrha`;
+    check(id,nm,ch24,"24 h",rules.c24,usd); check(id,nm,ch1h,"1 h",rules.c1,usd);
+  }
+}
+
+async function getJson(url){
+  const r = await fetch(url,{cache:"no-store"});
+  if(!r.ok) throw new Error(r.status);
+  return r.json();
+}
+let fxAt = 0;
+async function poll(){
+  const now = Date.now(), errs=[];
+  if(now-fxAt > 6*H){
+    try{ const d = await getJson("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD"); if(d?.rates?.USD>0){ fx=d.rates.USD; fxAt=now; } }catch{ errs.push("kurs"); }
+  }
+  const [cg, au] = await Promise.allSettled([
+    getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true"),
+    getJson("https://api.gold-api.com/price/XAU"),
+  ]);
+  if(cg.status==="fulfilled" && cg.value?.bitcoin?.usd>0){
+    applyLive("btc", cg.value.bitcoin.usd, cg.value.bitcoin.usd_24h_change ?? null, now);
+    applyLive("eth", cg.value.ethereum.usd, cg.value.ethereum.usd_24h_change ?? null, now);
+  } else errs.push("kripto");
+  if(au.status==="fulfilled" && au.value?.price>0) applyLive("gold", au.value.price, null, now);
+  else errs.push("zlato");
+  if(errs.length<3) lastOk = now;
+  REF.assets.forEach(a=>{ if(a.live) a.live.stale = errs.includes(a.id==="gold"?"zlato":"kripto"); });
+  LS.set(HIST_KEY,hist);
+  $("fxline").textContent = `EUR/USD ${fx.toFixed(4)}${fxAt?" · ECB":""}`;
+  $("live-status").textContent = (errs.length? `Izvor ne odgovara (${errs.join(", ")}), pokušavam ponovo. ` : "") +
+    (lastOk? "Poslednja provera "+new Date(lastOk).toLocaleTimeString("sr-RS") : "");
+  renderStrip(); if(!$("pf").contains(document.activeElement)) renderPf(); renderAlerts();
+}
+
+function notifyNote(){
+  if(!("Notification" in window)){ $("al-notify").hidden=true; $("al-note").textContent="Ovaj browser ne podržava obaveštenja; alarmi se vide ovde."; return; }
+  const p = Notification.permission;
+  $("al-notify").hidden = p!=="default";
+  $("al-note").textContent = p==="granted" ? "Obaveštenja uključena." : p==="denied" ? "Obaveštenja su blokirana u podešavanjima browsera." : "";
+}
+$("al-notify").addEventListener("click", async ()=>{ try{ await Notification.requestPermission(); }catch{} notifyNote(); });
+$("al-clear").addEventListener("click", ()=>{ alerts=[]; fired={}; LS.set(ALERTS_KEY,alerts); LS.set(FIRED_KEY,fired); renderAlerts(); });
+notifyNote(); renderAlerts();
+poll(); setInterval(poll, POLL_MS);
 </script>
 </body>
 </html>
